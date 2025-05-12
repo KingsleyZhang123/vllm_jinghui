@@ -1,12 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import importlib
-from typing import TYPE_CHECKING, Callable, Dict, Type
+from typing import Callable, Dict, Type, TYPE_CHECKING
 
 import vllm.envs as envs
 from vllm.distributed.kv_transfer.kv_connector.base import KVConnectorBaseType
-from vllm.distributed.kv_transfer.kv_connector.v1 import (KVConnectorBase_V1,
-                                                          KVConnectorRole)
+from vllm.distributed.kv_transfer.kv_connector.v1 import (
+    KVConnectorBase_V1,
+    KVConnectorRole,
+)
 from vllm.logger import init_logger
 
 from .base import KVConnectorBase
@@ -21,8 +23,7 @@ class KVConnectorFactory:
     _registry: Dict[str, Callable[[], Type[KVConnectorBaseType]]] = {}
 
     @classmethod
-    def register_connector(cls, name: str, module_path: str,
-                           class_name: str) -> None:
+    def register_connector(cls, name: str, module_path: str, class_name: str) -> None:
         """Register a connector with a lazy-loading module and class name."""
         if name in cls._registry:
             raise ValueError(f"Connector '{name}' is already registered.")
@@ -34,11 +35,14 @@ class KVConnectorFactory:
         cls._registry[name] = loader
 
     @classmethod
-    def create_connector_v0(cls, rank: int, local_rank: int,
-                            config: "VllmConfig") -> KVConnectorBase:
+    def create_connector_v0(
+        cls, rank: int, local_rank: int, config: "VllmConfig"
+    ) -> KVConnectorBase:
         if envs.VLLM_USE_V1:
-            raise ValueError("Attempting to initialize a V0 Connector, "
-                             f"but found {envs.VLLM_USE_V1=}")
+            raise ValueError(
+                "Attempting to initialize a V0 Connector, "
+                f"but found {envs.VLLM_USE_V1=}"
+            )
 
         connector_name = config.kv_transfer_config.kv_connector
         if connector_name not in cls._registry:
@@ -55,8 +59,18 @@ class KVConnectorFactory:
         role: KVConnectorRole,
     ) -> KVConnectorBase_V1:
         if not envs.VLLM_USE_V1:
-            raise ValueError("Attempting to initialize a V1 Connector, "
-                             f"but found {envs.VLLM_USE_V1=}")
+            raise ValueError(
+                "Attempting to initialize a V1 Connector, "
+                f"but found {envs.VLLM_USE_V1=}"
+            )
+
+        if (
+            config.kv_transfer_config.kv_connector_external_registeration_args
+            is not None
+        ):
+            cls.register_connector(
+                **config.kv_transfer_config.kv_connector_external_registeration_args
+            )
 
         connector_name = config.kv_transfer_config.kv_connector
         connector_cls = cls._registry[connector_name]()
@@ -79,34 +93,41 @@ class KVConnectorFactory:
 KVConnectorFactory.register_connector(
     "PyNcclConnector",
     "vllm.distributed.kv_transfer.kv_connector.simple_connector",
-    "SimpleConnector")
+    "SimpleConnector",
+)
 
 KVConnectorFactory.register_connector(
     "MooncakeConnector",
     "vllm.distributed.kv_transfer.kv_connector.simple_connector",
-    "SimpleConnector")
+    "SimpleConnector",
+)
 
 KVConnectorFactory.register_connector(
     "LMCacheConnector",
     "vllm.distributed.kv_transfer.kv_connector.lmcache_connector",
-    "LMCacheConnector")
+    "LMCacheConnector",
+)
 
 KVConnectorFactory.register_connector(
     "MooncakeStoreConnector",
     "vllm.distributed.kv_transfer.kv_connector.mooncake_store_connector",
-    "MooncakeStoreConnector")
+    "MooncakeStoreConnector",
+)
 
 KVConnectorFactory.register_connector(
     "SharedStorageConnector",
     "vllm.distributed.kv_transfer.kv_connector.v1.shared_storage_connector",
-    "SharedStorageConnector")
+    "SharedStorageConnector",
+)
 
 KVConnectorFactory.register_connector(
     "LMCacheConnectorV1",
     "vllm.distributed.kv_transfer.kv_connector.v1.lmcache_connector",
-    "LMCacheConnectorV1")
+    "LMCacheConnectorV1",
+)
 
 KVConnectorFactory.register_connector(
     "NixlConnector",
     "vllm.distributed.kv_transfer.kv_connector.v1.nixl_connector",
-    "NixlConnector")
+    "NixlConnector",
+)
